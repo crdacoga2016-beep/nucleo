@@ -15,21 +15,12 @@ APPS_DIR="$HOME/.local/share/applications"
 mkdir -p "$ICON_DIR" "$APPS_DIR"
 install -m644 assets/icon.svg "$ICON_DIR/nucleo.svg"
 
-cat > "$APPS_DIR/nucleo.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Version=1.0
-Name=Núcleo
-GenericName=Centro de sistema
-Comment=Administrador gráfico para tareas de Arch y CachyOS
-Exec=sh -c 'cd "$APP_DIR" && exec ./run.sh'
-Icon=nucleo
-Terminal=false
-Categories=System;PackageManager;Utility;
-Keywords=pacman;cachyos;arch;actualizar;updates;orphans;snapshots;
-StartupNotify=true
-StartupWMClass=nucleo
-EOF
+# La entrada de menú sale de la plantilla nucleo.desktop del repo, con la ruta
+# real sustituida. El Exec debe ser una ruta absoluta entre comillas: usar
+# "sh -c 'cd ... && ...'" rompe la especificación de escritorio y los
+# lanzadores estrictos (fuzzel, gtk-launch) descartan la entrada.
+sed "s|@APP_DIR@|$APP_DIR|g" nucleo.desktop > "$APPS_DIR/nucleo.desktop"
+chmod 644 "$APPS_DIR/nucleo.desktop"
 
 update-desktop-database "$APPS_DIR" >/dev/null 2>&1 || true
 echo "Núcleo instalado en $APP_DIR"
