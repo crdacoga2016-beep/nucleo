@@ -246,6 +246,14 @@ class UpdatePage(Page):
         )
         proc.async_call(safety.preflight, self._on_preflight, repo, owner=self)
 
+    def _problem_lines(self, checks) -> list[str]:
+        lines = []
+        for check in checks:
+            lines.append(check.line())
+            if check.fix:
+                lines.append(f"   → solución: {check.fix}")
+        return lines
+
     def _on_preflight(self, checks) -> None:
         self._preflighting = False
         if isinstance(checks, proc.QueryError):
@@ -255,32 +263,39 @@ class UpdatePage(Page):
             return
         fails = [check for check in checks if check.status == "fail"]
         warns = [check for check in checks if check.status == "warn"]
+        critical = [c for c in fails if c.critical]
+        soft = [c for c in fails if not c.critical]
         items = [check.line() for check in checks]
-        if fails:
+        if critical:
             self._set_buttons_enabled(True)
             info(
                 self,
                 "Actualización bloqueada",
-                "Se encontraron problemas críticos. No se ha modificado nada.",
-                items=items,
+                "Hay problemas críticos que deben corregirse primero.",
+                items=self._problem_lines(critical),
                 detail=(
-                    "Corrige los avisos marcados con ✕ y vuelve a intentarlo. "
-                    "Si no sabes cómo, revisa la consola o pide ayuda antes de forzar."
+                    "Aplica las soluciones mostradas y vuelve a intentarlo. "
+                    "No se ha modificado nada."
                 ),
                 danger=True,
             )
             self._on_updates(self._updates)
             return
-        if warns:
+        if soft or warns:
             self._set_buttons_enabled(True)
             if not confirm(
                 self,
                 "Revisión completada con avisos",
                 "Puedes continuar, pero revisa estos avisos:",
-                items=items,
-                detail="Se creará un snapshot antes de actualizar los repositorios.",
-                confirm_text="Actualizar de forma segura",
-                danger=False,
+                items=self._problem_lines(soft + warns),
+                detail=(
+                    "Se creará un snapshot antes de actualizar los repositorios. "
+                    "Si un aviso es la base de datos, aplica su solución primero."
+                ),
+                confirm_text=(
+                    "Actualizar de todos modos" if soft else "Actualizar de forma segura"
+                ),
+                danger=bool(soft),
             ):
                 self._on_updates(self._updates)
                 return

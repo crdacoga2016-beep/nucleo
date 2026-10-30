@@ -40,6 +40,8 @@ class Check:
     title: str
     status: str
     detail: str = ""
+    fix: str = ""
+    critical: bool = True
 
     def line(self) -> str:
         mark = {"ok": "✓", "warn": "⚠", "fail": "✕", "info": "ℹ"}.get(
@@ -183,6 +185,11 @@ def _check_database() -> Check:
             "Base de datos de pacman",
             "fail",
             detail[-1] if detail else f"código {code}",
+            fix=(
+                "sudo pacman-key --populate archlinux cachyos && "
+                "sudo pacman -Syy"
+            ),
+            critical=False,
         )
     return Check("database", "Base de datos de pacman", "ok", "consistente")
 
@@ -243,6 +250,7 @@ def _check_news() -> Check:
             "Noticias",
             "info",
             "no se pudieron leer los feeds; continúa solo si tienes conexión.",
+            fix="comprueba tu conexión a internet (feeds de Arch/CachyOS)",
         )
     critical = [item for item in items if item["critical"]]
     if critical:
